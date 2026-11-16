@@ -1,9 +1,11 @@
 // KITEWARDEN — the single game state. One object holds everything the
 // game is: the economy, the wave, the towers on the ridge, the enemies
-// walking it, the wind, and the blessings the player has chosen. The sim
-// reads and writes this object; the renderer only reads it.
+// walking it, the wind, the wind vanes the player turns, and the blessings
+// the player has chosen. The sim reads and writes this object; the
+// renderer only reads it.
 
 import { WindModel } from './wind.js';
+import { WindVanes } from './vanes.js';
 import { BUILD_NODES } from './ridge.js';
 import { TOTAL_WAVES } from './waves.js';
 import { mulberry32 } from './random.js';
@@ -36,8 +38,12 @@ export class GameState {
     this.spawnQueue = [];
     this.spawnTimer = 0;
 
-    // The wind, and the permanent modifiers blessings have granted.
+    // The wind, the vanes that steer it locally, and the permanent
+    // modifiers blessings have granted. The wind model reads the vanes,
+    // so every local-wind question goes through wind.localWindAt.
     this.wind = new WindModel();
+    this.vanes = new WindVanes();
+    this.wind.vanes = this.vanes;
     this.spawnCounter = 0; // every spawned enemy's index: wobble phases stay seeded
     this.mods = {
       range: 0,
@@ -63,6 +69,7 @@ export class GameState {
     this.message = ''; // banner line under the HUD ("Wave 7 — the wind turns NW")
     this.messageUntil = 0;
     this.stats = { shots: 0, hits: 0 };
+    this.hover = { x: -1, y: -1 }; // last pointer position, in board pixels
   }
 
   get alive() {

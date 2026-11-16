@@ -2,8 +2,8 @@
 // the combat sim, the renderer, the sound bank and the input, and runs the
 // fixed-step loop: the simulation ticks at 60 Hz no matter how fast the
 // screen draws, so the game plays the same on a slow laptop and a fast one.
-// Every player action in the game — build, upgrade, sell, start a wave,
-// choose a blessing, restart — is a method here.
+// Every player action in the game — build, upgrade, sell, turn a wind
+// vane, start a wave, choose a blessing, restart — is a method here.
 
 import { GameState } from './game.js';
 import { Combat } from './combat.js';
@@ -153,6 +153,24 @@ export class KitewardenGame {
     this.state.buildType = type;
   }
 
+  // --- Wind vanes ---
+
+  // Turn one vane 45 degrees clockwise. Free, no gold, legal any time
+  // during play — even while a wave is running. The pulse ring, the
+  // particles and the chime are the feedback; the floater names the new
+  // direction so the change reads without looking at the vane.
+  rotateVane(vaneId) {
+    const s = this.state;
+    if (s.phase !== 'playing' && s.phase !== 'blessing') return null;
+    const label = s.vanes.rotate(vaneId, s.time);
+    if (label === null) return null;
+    const vane = s.vanes.at(vaneId);
+    this.combat.burst(vane.x, vane.y, '#5ec8c0', 8);
+    this.combat.floater(vane.x, vane.y - 44, `Wind ${label}`, '#5ec8c0');
+    s.audio?.vaneClick();
+    return label;
+  }
+
   // --- Building ---
 
   selectNode(nodeId) {
@@ -235,6 +253,9 @@ export class KitewardenGame {
     if (s.waveState === 'spawning' || s.waveState === 'fighting') return false;
     s.wave++;
     s.wind.rollForWave(s.wave, s.rng);
+    // Every vane turns to face the new wind at the wave's start; the
+    // player then chooses where to diverge from it, for free.
+    s.vanes.syncToWind(s.wind.angle);
     const wave = buildWave(s.wave, s.rng);
     s.spawnQueue = wave.spawns.map((spawn, i) => ({
       enemy: spawnEnemy(spawn.type, s.wave, s.spawnCounter++),
@@ -243,7 +264,8 @@ export class KitewardenGame {
     s.spawnTimer = 0.5;
     s.waveState = 'spawning';
     const boss = wave.boss ? ' — the Storm Serpent comes!' : '';
-    s.banner(`Wave ${s.wave} — wind ${s.wind.label}, strength ${Math.round(s.wind.strength * 100)}%${boss}`, 3.5);
+    const vaneTip = s.wave === 1 ? ' Click a wind vane (free) to turn the local wind!' : '';
+    s.banner(`Wave ${s.wave} — wind ${s.wind.label}, strength ${Math.round(s.wind.strength * 100)}%${boss}${vaneTip}`, 3.5);
     this.audio.click();
     return true;
   }

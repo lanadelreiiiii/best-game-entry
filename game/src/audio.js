@@ -132,6 +132,13 @@ export class SoundBank {
     this.blip(880, 0.05, 'sine', 0.08);
   }
 
+  // Turning a wind vane: a bright two-note chime, up a fourth — the
+  // wind itself changing direction, in miniature.
+  vaneClick() {
+    this.blip(880, 0.07, 'triangle', 0.12, 1174);
+    setTimeout(() => this.blip(1174, 0.09, 'triangle', 0.1), 70);
+  }
+
   build() {
     this.blip(392, 0.1, 'triangle', 0.12, 523);
   }

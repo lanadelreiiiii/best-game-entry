@@ -1,7 +1,7 @@
 // KITEWARDEN — the renderer. One job: draw the game. The sim writes the
 // state; this file only reads it. Sky, ridge, towers, enemies, the curved
-// trails of wind-bent shots, particles, and the wind itself — then it hands
-// the menus and HUD to hud.js.
+// trails of wind-bent shots, particles, the wind vanes and their rings,
+// and the wind itself — then it hands the menus and HUD to hud.js.
 
 import { RIDGE_PATH, BUILD_NODES, PATH_WIDTH, NODE_RADIUS, distanceToPath } from './ridge.js';
 import { drawHud, drawOverlays, hudLayout } from './hud.js';
@@ -60,6 +60,7 @@ export class Renderer {
     this.drawTerrain(ctx, state);
     this.drawPath(ctx);
     this.drawNodes(ctx, state);
+    this.drawVanes(ctx, state);
     this.drawTowers(ctx, state);
     this.drawEnemies(ctx, state);
     this.drawProjectiles(ctx, state);
@@ -274,6 +275,122 @@ export class Renderer {
         ctx.textAlign = 'center';
         ctx.fillText('＋', node.x, node.y + 6);
       }
+    }
+  }
+
+  // The wind vanes: each one is a big, readable kite-vane — a dashed
+  // influence ring, a stone mast, a kite diamond and a long arrow pointing
+  // the way the local wind blows inside the ring, and a compass label
+  // above it. A vane you just turned throws an expanding pulse ring.
+  // Hovering one lights a gold ring and a "click to turn" hint, so the
+  // mechanic is discoverable without reading anything.
+  drawVanes(ctx, state) {
+    const vanes = state.vanes;
+    if (!vanes) return;
+    const hovered =
+      state.phase === 'playing' && state.hover
+        ? vanes.all().find((v) => Math.hypot(state.hover.x - v.x, state.hover.y - v.y) < 36)
+        : null;
+    for (const vane of vanes.all()) {
+      const angle = vanes.angleOf(vane);
+      const label = vanes.labelOf(vane);
+      // Influence ring: faint teal fill, dashed rim — the ground the
+      // vane's wind rules.
+      ctx.beginPath();
+      ctx.arc(vane.x, vane.y, vane.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(94, 200, 192, 0.05)';
+      ctx.fill();
+      ctx.setLineDash([8, 10]);
+      ctx.strokeStyle = 'rgba(94, 200, 192, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Toggle pulse: an expanding gold ring for three sim seconds after
+      // a turn, so the moment reads even in a still frame. A pulse held
+      // open longer than that (screenshot staging holds one mid-flight)
+      // freezes mid-expansion instead of running past its own radius.
+      if (state.time < vane.pulseUntil) {
+        const remaining = vane.pulseUntil - state.time;
+        const p =
+          remaining > 3 ? 0.45 : Math.max(0, Math.min(1, 1 - remaining / 3));
+        ctx.beginPath();
+        ctx.arc(vane.x, vane.y, 26 + p * (vane.radius - 26), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 217, 77, ${(1 - p) * 0.85})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = `rgba(255, 217, 77, ${0.9 - p * 0.6})`;
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`TURNED ${label}`, vane.x, vane.y - vane.radius - 8);
+      }
+      // Hover ring: the vane is clickable, and the cursor should say so.
+      if (hovered === vane) {
+        ctx.beginPath();
+        ctx.arc(vane.x, vane.y, 32, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffd94d';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#ffd94d';
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('CLICK TO TURN THE WIND — FREE', vane.x, vane.y + 52);
+      }
+      // Stone mast.
+      ctx.beginPath();
+      ctx.arc(vane.x, vane.y, 22, 0, Math.PI * 2);
+      ctx.fillStyle = '#2b3a46';
+      ctx.fill();
+      ctx.strokeStyle = '#c9a35c';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      // The kite diamond, turned to the vane's heading, with a long
+      // arrow shaft and head pointing the way the local wind blows.
+      ctx.save();
+      ctx.translate(vane.x, vane.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#5ec8c0';
+      ctx.strokeStyle = '#1d5a55';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(0, 11);
+      ctx.lineTo(-14, 0);
+      ctx.lineTo(0, -11);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#ffd94d';
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-6, 0);
+      ctx.lineTo(30, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#ffd94d';
+      ctx.beginPath();
+      ctx.moveTo(40, 0);
+      ctx.lineTo(28, -7);
+      ctx.lineTo(28, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // Compass label in a dark pill above the mast, and a small
+      // "WIND VANE" caption below it — legible at contact-sheet size.
+      ctx.font = 'bold 15px system-ui, sans-serif';
+      const lw = ctx.measureText(label).width + 16;
+      ctx.fillStyle = 'rgba(20, 28, 36, 0.9)';
+      ctx.strokeStyle = '#5ec8c0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(vane.x - lw / 2, vane.y - 52, lw, 22, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffd94d';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, vane.x, vane.y - 36);
+      ctx.fillStyle = 'rgba(242, 234, 216, 0.75)';
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.fillText('WIND VANE', vane.x, vane.y + 38);
     }
   }
 

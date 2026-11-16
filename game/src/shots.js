@@ -1,14 +1,18 @@
 // KITEWARDEN — staged screenshots. `?shot=<name>&seed=<n>` drives the real
 // game into an exact scene: towers are placed with the real build action,
-// waves are started with the real wave action, and the sim is stepped with
-// the real fixed-step loop. Nothing here draws anything by hand — every
-// pixel in a screenshot is a frame the game itself rendered.
+// vanes are turned with the real rotate action, waves are started with the
+// real wave action, and the sim is stepped with the real fixed-step loop.
+// Nothing here draws anything by hand — every pixel in a screenshot is a
+// frame the game itself rendered.
 //
-//   start  — the title screen over the ridge, wind streaks drifting
-//   play   — wave 10, the boss wave: the Storm Serpent and its escort
-//             spread along the top run, seven towers firing, the Mender
-//             healing the pack
-//   choice — the blessing offer after wave 5, three cards to pick from
+//   start  — the title screen over the ridge, wind streaks drifting, the
+//             three vanes pointing three different ways under the design
+//             note that names the mechanic
+//   play   — wave 10, the boss wave: a gale blowing north, the top vane
+//             turned east, so the shots flying through its ring bend
+//             visibly sideways while the Storm Serpent crosses the top run
+//   vane   — wave 7 mid-fight, the middle vane just turned to SE: the
+//             pulse ring still expanding, "TURNED SE" over its ring
 //   end    — the victory screen after wave 20, the Serpent defeated
 
 import { TOTAL_WAVES, drawBlessings } from './waves.js';
@@ -37,6 +41,26 @@ function placeStagedTowers(game) {
       game.clearSelection();
     }
   }
+}
+
+// Turn a vane to a named heading through the real rotate action, one
+// 45-degree click at a time. At most eight clicks; the loop always ends.
+function turnVaneTo(game, id, label) {
+  const s = game.state;
+  for (let i = 0; i < 8; i++) {
+    if (s.vanes.labelOf(s.vanes.at(id)) === label) return;
+    game.rotateVane(id);
+  }
+}
+
+// A rotate throws particles and a floater. On the title screen the sim
+// never steps, so anything thrown there would freeze mid-air in the
+// still — sweep them away after staging the cover's vanes.
+function sweepEffects(game) {
+  const s = game.state;
+  s.particles = [];
+  s.floaters = [];
+  for (const p of game.combat.particlePool) p.active = false;
 }
 
 // Step the sim until the current wave clears, the run ends, or the cap is
@@ -93,8 +117,15 @@ export function stageShot(game, name, seed) {
   s.audio = null; // staged runs are silent: no AudioContext in screenshots
 
   if (name === 'start') {
-    s.phase = 'title';
     s.wind.rollForWave(1, s.rng);
+    s.vanes.syncToWind(s.wind.angle);
+    // The cover shows the mechanic at a glance: three vanes, three
+    // different headings, under the design note that names them.
+    turnVaneTo(game, 0, 'NE');
+    turnVaneTo(game, 1, 'S');
+    turnVaneTo(game, 2, 'W');
+    sweepEffects(game);
+    s.phase = 'title';
     return;
   }
 
@@ -108,7 +139,34 @@ export function stageShot(game, name, seed) {
     // are firing. The wave cannot end this early — the Serpent takes
     // ~25 seconds of focused fire to bring down.
     for (let i = 0; i < 1400 && s.phase === 'playing'; i++) game.stepSim(STEP);
-    s.banner(`Wave 10 — the Storm Serpent comes, and the kites bend with it.`, 30);
+    // The bending shot: a northerly gale, and the top vane turned east.
+    // Shots from the ridge towers toward the top run cross the vane's
+    // ring and curve east, away from the global wind — the mechanic,
+    // visible in the trails.
+    s.wind.angle = -Math.PI / 2;
+    s.wind.label = 'N';
+    s.wind.strength = 0.95;
+    turnVaneTo(game, 0, 'E');
+    turnVaneTo(game, 1, 'S');
+    turnVaneTo(game, 2, 'W');
+    for (let i = 0; i < 120 && s.phase === 'playing'; i++) game.stepSim(STEP);
+    s.banner(`Wave 10 — gale from the north! Top vane turned E: shots bend east inside its ring.`, 30);
+    return;
+  }
+
+  if (name === 'vane') {
+    playThrough(game, 7);
+    for (let i = 0; i < 600 && s.phase === 'playing'; i++) game.stepSim(STEP);
+    // The toggle moment, mid-fight: a westerly gale, and the middle vane
+    // just turned to SE through the real rotate action. The pulse ring
+    // is held open for the still, so the turn reads in one frame.
+    s.wind.angle = Math.PI;
+    s.wind.label = 'W';
+    s.wind.strength = 0.9;
+    turnVaneTo(game, 1, 'SE');
+    s.vanes.at(1).pulseUntil = s.time + 30;
+    for (let i = 0; i < 30 && s.phase === 'playing'; i++) game.stepSim(STEP);
+    s.banner(`Vane turned SE — the wind inside its ring now blows SE. Free, anytime.`, 30);
     return;
   }
 

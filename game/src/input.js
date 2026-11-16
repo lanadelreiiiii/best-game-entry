@@ -1,11 +1,14 @@
 // KITEWARDEN — mouse and keyboard input. Pointer clicks hit-test the HUD
-// layout first (buttons, menus, cards), then the world (build nodes, then
-// towers); keys drive the same actions the buttons do, so every control
-// works twice — once by mouse, once by keyboard.
+// layout first (buttons, menus, cards), then the world (wind vanes, then
+// build nodes, then towers); keys drive the same actions the buttons do,
+// so every control works twice — once by mouse, once by keyboard.
+// Vanes are hit-tested before nodes: a vane never sits on a node, but the
+// order keeps a vane click from ever opening a build menu by accident.
 
 import { hudLayout, inRect } from './hud.js';
 import { NODE_RADIUS } from './ridge.js';
 import { TOWER_ORDER } from './towers.js';
+import { VANE_CLICK_RADIUS } from './vanes.js';
 
 export class Input {
   constructor(game, canvas) {
@@ -27,6 +30,7 @@ export class Input {
 
   onPointerMove(e) {
     this.hover = this.pos(e);
+    this.game.state.hover = this.hover; // the renderer reads this for vane hover rings
   }
 
   onPointerDown(e) {
@@ -78,7 +82,14 @@ export class Input {
       if (inRect(layout.towerPanel.sell, x, y)) return game.sellSelected();
     }
 
-    // World: a tower first (it sits on its node), then an empty node.
+    // World: a wind vane first — click it to turn the local wind, free,
+    // any time during play. Then a tower (it sits on its node), then an
+    // empty node.
+    for (const vane of state.vanes.all()) {
+      if (Math.hypot(x - vane.x, y - vane.y) < VANE_CLICK_RADIUS) {
+        return game.rotateVane(vane.id);
+      }
+    }
     for (const node of state.nodes) {
       if (node.tower && Math.hypot(x - node.x, y - node.y) < NODE_RADIUS + 4) {
         return game.selectTower(node.id);

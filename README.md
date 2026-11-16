@@ -7,7 +7,8 @@
 A wind-and-kite tower defense for make.fun's "Make the best game" bounty ($1,000 in USDC).
 
 **The game in one sentence:** build kite towers on ridge nodes, and the wind — which shifts
-every wave — bends every shot, so a tower standing downwind reaches farther; hold 20 waves
+every wave — bends every shot, so a tower standing downwind reaches farther; **click a
+Wind Vane to turn the wind** and bend shots around corners inside its ring; hold 20 waves
 against wisps, drifters and the Storm Serpent, then keep going in endless mode.
 
 ## Play it
@@ -18,7 +19,8 @@ node serve.ts
 ```
 
 No build step, no network: `game/` is plain static files. Click a ridge node to build,
-click a tower to upgrade or sell. `Space` start wave / pause, `1–6` pick a tower, `F` speed ×2,
+click a tower to upgrade or sell, click a wind vane to turn the local wind (free, anytime,
+even mid-wave). `Space` start wave / pause, `1–6` pick a tower, `F` speed ×2,
 `R` restart, `M` mute.
 
 ## What's inside
@@ -27,7 +29,14 @@ click a tower to upgrade or sell. `Space` start wave / pause, `1–6` pick a tow
 - 6 enemies: Wisp, Drifter, Gustling, Shearling, Storm Mender (heals the pack), Storm Serpent (boss every 5th wave)
 - 20 waves + endless, 1-of-3 gust blessings every 5 waves, 4 upgrade levels per tower
 - Wind model: direction + strength per wave, curving projectiles, downwind range bonus
-- Procedural WebAudio (wind, shots, kills, lightning), particles, damage numbers, screen shake
+- **Wind Vanes (the mechanic):** 3 turnable vanes on open ground, one per band of the map.
+  Each vane points at one of 8 compass headings; a click turns it 45°, free. Inside its
+  170px ring the local wind blends 65% toward the vane's direction (fading to the ring's
+  edge), so shots flying through the ring bend toward where you pointed it and a tower's
+  downwind range bonus is judged on the local wind. Vanes re-align to each new wave's
+  wind at wave start. Big kite-vane arrow, dashed influence ring, compass label, pulse
+  ring on every turn.
+- Procedural WebAudio (wind, shots, kills, lightning, vane chime), particles, damage numbers, screen shake
 
 ## Hand it in
 

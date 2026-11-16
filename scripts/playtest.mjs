@@ -1,9 +1,11 @@
 // KITEWARDEN — automated playtest. Plays the real game like a player:
-// title -> start -> select a node -> build an Archer with key 1 -> start
-// wave 1 with Space -> let it run -> pause and resume -> restart. Asserts
-// the wave actually starts, towers actually fire, and nothing throws.
-// Exits non-zero on any failure. Writes one evidence screenshot to /tmp
-// (never into screenshots/, which only holds staged shots).
+// title -> start -> select a node -> build an Archer with key 1 -> turn a
+// wind vane twice with the mouse (free, and it rotates) -> start wave 1
+// with Space -> let it run -> pause and resume -> restart. Asserts the
+// wave actually starts, towers actually fire, vanes actually turn, and
+// nothing throws. Exits non-zero on any failure. Writes one evidence
+// screenshot to /tmp (never into screenshots/, which only holds staged
+// shots).
 //
 //   node scripts/playtest.mjs [--port 8902]
 
@@ -85,6 +87,7 @@ try {
         shots: s.stats.shots,
         paused: s.paused,
         speed: s.speed,
+        vanes: s.vanes.all().map((v) => s.vanes.labelOf(v)),
       };
     });
 
@@ -92,6 +95,7 @@ try {
   await page.waitForTimeout(800);
   let st = await readState();
   check('game boots to title', st && st.phase === 'title', JSON.stringify(st));
+  check('three wind vanes on the board', st && st.vanes && st.vanes.length === 3, JSON.stringify(st && st.vanes));
 
   // Click anywhere: title -> playing.
   await page.mouse.click(640, 600);
@@ -118,6 +122,21 @@ try {
   await page.waitForTimeout(300);
   st = await readState();
   check('second tower built via menu', st && st.towers === 2 && st.gold === 150, JSON.stringify(st));
+
+  // Wind vane: click vane 0 at (330, 245). Before any wave it points
+  // east; one click turns it to SE, a second to S — and both are free.
+  const goldBeforeVane = st.gold;
+  const labelBefore = st.vanes[0];
+  await page.mouse.click(330, 245);
+  await page.waitForTimeout(300);
+  st = await readState();
+  check('vane click rotates it +45deg', st && st.vanes[0] !== labelBefore, JSON.stringify(st && st.vanes));
+  check('vane toggle is free', st && st.gold === goldBeforeVane, JSON.stringify(st));
+  const labelAfterOne = st.vanes[0];
+  await page.mouse.click(330, 245);
+  await page.waitForTimeout(300);
+  st = await readState();
+  check('second vane click rotates it again', st && st.vanes[0] !== labelAfterOne, JSON.stringify(st && st.vanes));
 
   // Space starts wave 1.
   await page.keyboard.press(' ');

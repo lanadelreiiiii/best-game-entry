@@ -77,17 +77,18 @@ try {
     await page.goto(url, { waitUntil: 'load', timeout: 60000 });
     // Staging runs synchronously in boot(); give the live game a few
     // frames so projectiles, trails and wind streaks are mid-flight. For
-    // the play shot, wait until shots are actually in the air — the cover
-    // of the action must show the wind bending them.
-    await page.waitForTimeout(1200);
-    if (shot.name.startsWith('2-')) {
+    // the action shots, wait briefly until shots are actually in the air
+    // — but keep the wait short: every extra second lets the staged wave
+    // thin out, and a cleared wave has nothing left to photograph.
+    await page.waitForTimeout(700);
+    if (shot.name.startsWith('2-') || shot.name.startsWith('3-')) {
       try {
         await page.waitForFunction(
-          () => window.__kitewarden && window.__kitewarden.state.projectiles.length >= 2,
-          { timeout: 6000 },
+          () => window.__kitewarden && window.__kitewarden.state.projectiles.length >= 3,
+          { timeout: 2500 },
         );
       } catch {
-        console.log('  note: no 2+ projectiles in flight at capture time');
+        console.log('  note: no 3+ projectiles in flight at capture time');
       }
     } else {
       await page.waitForTimeout(1300);
@@ -106,6 +107,7 @@ try {
         towers: s.towers().length,
         projectiles: s.projectiles.length,
         blessing: s.blessingOffer ? s.blessingOffer.length : 0,
+        vanes: s.vanes.all().map((v) => s.vanes.labelOf(v)),
       };
     });
     console.log(`  state: ${JSON.stringify(state)}`);

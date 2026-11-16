@@ -3,6 +3,9 @@
 // build menu, the tower panel, the blessing choice, and the title / victory
 // / game-over / paused screens. `hudLayout` returns every clickable rect,
 // so input.js and the renderer always agree on where things are.
+// The cover's design note names the wind-vane mechanic outright, and a
+// one-line legend at the bottom of the screen keeps it in front of the
+// player all run long.
 
 import { TOWERS, TOWER_ORDER, upgradeCost, MAX_TOWER_LEVEL } from './towers.js';
 
@@ -214,6 +217,13 @@ export function drawHud(ctx, state, layout) {
     ctx.font = '13px system-ui, sans-serif';
     ctx.fillText('Click a ＋ node to build a kite tower — then press Start Wave.', 16, 700);
   }
+  // Wind-vane legend, bottom right, all run long: the mechanic in one line.
+  if (state.phase === 'playing' || state.phase === 'blessing') {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#5ec8c0';
+    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.fillText('◆ WIND VANES: click a vane to turn the wind — free, anytime', 1264, 700);
+  }
 }
 
 export function drawOverlays(ctx, state, layout) {
@@ -245,26 +255,29 @@ function drawTitle(ctx, state, layout) {
   ctx.fillStyle = '#f2ead8';
   ctx.font = 'italic 24px Georgia, serif';
   ctx.fillText('Hold the ridge against the storm.', 640, 285);
+  ctx.font = 'bold 17px system-ui, sans-serif';
+  ctx.fillStyle = '#5ec8c0';
+  ctx.fillText('WIND VANES: click a vane to turn the wind — bend shots around corners.', 640, 324);
   ctx.font = '16px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(242, 234, 216, 0.95)';
   ctx.fillText(
-    'A tower defense of wind and kites: the wind bends every shot, so a tower',
+    'The wind bends every shot, so a tower standing downwind reaches farther.',
     640,
-    330,
+    352,
   );
   ctx.fillText(
-    'standing downwind reaches farther. Build on the ridge nodes, hold 20 waves,',
+    'Build on the ridge nodes, turn the vanes to steer the wind, hold 20 waves,',
     640,
-    354,
+    376,
   );
-  ctx.fillText('and face the Storm Serpent every fifth wave — then keep going, endlessly.', 640, 378);
+  ctx.fillText('and face the Storm Serpent every fifth wave — then keep going, endlessly.', 640, 400);
   ctx.font = '14px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(242, 234, 216, 0.7)';
-  ctx.fillText('Click a node to build · 1–6 pick a tower · Space starts a wave · F fast-forward · R restart', 640, 420);
+  ctx.fillText('Click a node to build · click a vane to turn the wind (free) · Space starts a wave · F fast-forward · R restart', 640, 438);
   button(ctx, layout.titleStart, '▶  START THE DEFENSE', {});
   ctx.fillStyle = 'rgba(242, 234, 216, 0.6)';
   ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText('20 waves + endless · 6 towers · 6 enemies · a blessing every 5 waves', 640, 560);
+  ctx.fillText('20 waves + endless · 6 towers · 6 enemies · 3 wind vanes · a blessing every 5 waves', 640, 560);
 }
 
 function drawBuildMenu(ctx, state, layout) {

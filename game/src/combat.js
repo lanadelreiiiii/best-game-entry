@@ -2,6 +2,13 @@
 // with the wind; hits pay gold, split Shearlings, and shake the ridge when
 // a boss falls. Projectiles and particles live in fixed pools — the hot
 // loop allocates nothing new while a wave is running.
+//
+// The wind a shot feels is the LOCAL wind (wind.localWindAt): inside a
+// wind vane's ring the shots bend toward the direction the player turned
+// that vane to, and a tower's downwind range bonus is judged on the wind
+// halfway between the tower and its target — the wind the shot actually
+// flies through. Outside every ring the local wind IS the global wind,
+// so nothing about the old balance changes there.
 
 import { towerStats } from './towers.js';
 import { pointAlongPath, ridgeLength } from './ridge.js';
@@ -83,8 +90,12 @@ export class Combat {
       if (!best) continue;
       const aim = Math.atan2(best.y - tower.y, best.x - tower.x);
       tower.aim = aim;
-      // Range check again with the wind: a downwind shot reaches farther.
-      const reach = range * s.wind.rangeMultiplier(aim);
+      // Range check again with the local wind: a downwind shot reaches
+      // farther, judged on the wind halfway to the target — the wind the
+      // shot flies through, vane ring included.
+      const midX = (tower.x + best.x) / 2;
+      const midY = (tower.y + best.y) / 2;
+      const reach = range * s.wind.rangeMultiplierAt(aim, midX, midY);
       if (Math.hypot(best.x - tower.x, best.y - tower.y) > reach) continue;
       if (tower.cooldown > 0) continue;
       tower.cooldown = 1 / (stats.rate * (1 + s.mods.rate));
@@ -126,8 +137,6 @@ export class Combat {
 
   updateProjectiles(dt) {
     const s = this.s;
-    const wind = s.wind.vector();
-    const bend = s.wind.bendPerTick(1) * 26; // px/s^2 of sideways push, scaled below
     for (const p of this.projectilePool) {
       if (!p.active) continue;
       p.life -= dt;
@@ -135,10 +144,13 @@ export class Combat {
         p.active = false;
         continue;
       }
-      // The wind bends the shot: sideways acceleration along the wind.
-      const push = bend * p.windCatch * dt;
-      p.vx += wind.x * push;
-      p.vy += wind.y * push;
+      // The LOCAL wind bends the shot: sideways acceleration along the
+      // wind at the shot's own position, so a shot crossing a turned
+      // vane's ring curves away from the global wind while it is inside.
+      const local = s.wind.localWindAt(p.x, p.y);
+      const push = local.strength * p.windCatch * 26 * dt;
+      p.vx += Math.cos(local.angle) * push;
+      p.vy += Math.sin(local.angle) * push;
       // Gentle steering keeps a bent shot on its target instead of lost.
       if (p.target && !p.target.dead && !p.target.leaked) {
         const want = Math.atan2(p.target.y - p.y, p.target.x - p.x);
@@ -153,7 +165,7 @@ export class Combat {
         p.vy = Math.sin(na) * sp;
       }
       p.trail.push({ x: p.x, y: p.y });
-      if (p.trail.length > 24) p.trail.shift(); // a long tail shows the wind bending the shot
+      if (p.trail.length > 40) p.trail.shift(); // a long tail shows the wind bending the shot
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.target && !p.target.dead && !p.target.leaked) {
