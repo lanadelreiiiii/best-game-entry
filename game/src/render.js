@@ -619,16 +619,18 @@ export class Renderer {
   drawWindStreaks(ctx, state) {
     const wind = state.wind.vector();
     const strength = state.wind.effectiveStrength();
-    const count = Math.round(14 + strength * 26);
-    ctx.strokeStyle = `rgba(242, 234, 216, ${0.16 + strength * 0.22})`;
-    ctx.lineWidth = 2;
+    // Fewer, shorter, fainter streaks: the wind must read, not scratch
+    // the whole board white at gale strength.
+    const count = Math.round(8 + strength * 14);
+    ctx.strokeStyle = `rgba(242, 234, 216, ${0.1 + strength * 0.14})`;
+    ctx.lineWidth = 1.5;
     for (let i = 0; i < count; i++) {
       const seed = i * 137.5;
       const speed = 40 + strength * 160;
       const span = 1600;
       const t = ((state.time * speed + seed) % span) - 160;
       const lane = 90 + ((i * 53) % 580);
-      const len = 30 + strength * 48;
+      const len = 20 + strength * 26;
       const x = t + lane * 0.35;
       const y = lane;
       ctx.beginPath();

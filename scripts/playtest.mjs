@@ -107,7 +107,7 @@ try {
   await page.keyboard.press('1');
   await page.waitForTimeout(300);
   st = await readState();
-  check('archer built with key 1', st && st.towers === 1 && st.gold === 150, JSON.stringify(st));
+  check('archer built with key 1', st && st.towers === 1 && st.gold === 230, JSON.stringify(st));
 
   // Build a second tower on node 1 with the mouse menu (click node, click
   // the Fan row). The menu opens right of the node: rows start at
@@ -117,7 +117,7 @@ try {
   await page.mouse.click(700, 230);
   await page.waitForTimeout(300);
   st = await readState();
-  check('second tower built via menu', st && st.towers === 2 && st.gold === 70, JSON.stringify(st));
+  check('second tower built via menu', st && st.towers === 2 && st.gold === 150, JSON.stringify(st));
 
   // Space starts wave 1.
   await page.keyboard.press(' ');
@@ -147,7 +147,7 @@ try {
   await page.keyboard.press('r');
   await page.waitForTimeout(400);
   st = await readState();
-  check('R restarts the run', st && st.phase === 'playing' && st.wave === 0 && st.gold === 200, JSON.stringify(st));
+  check('R restarts the run', st && st.phase === 'playing' && st.wave === 0 && st.gold === 280, JSON.stringify(st));
 
   await page.screenshot({ path: '/tmp/kitewarden-playtest.png' });
   await browser.close();

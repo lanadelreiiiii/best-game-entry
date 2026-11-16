@@ -5,7 +5,9 @@
 // pixel in a screenshot is a frame the game itself rendered.
 //
 //   start  — the title screen over the ridge, wind streaks drifting
-//   play   — wave 7 in full flight: five towers, curved shot trails, kills
+//   play   — wave 10, the boss wave: the Storm Serpent and its escort
+//             spread along the top run, seven towers firing, the Mender
+//             healing the pack
 //   choice — the blessing offer after wave 5, three cards to pick from
 //   end    — the victory screen after wave 20, the Serpent defeated
 
@@ -99,11 +101,14 @@ export function stageShot(game, name, seed) {
   placeStagedTowers(game);
 
   if (name === 'play') {
-    playThrough(game, 7);
-    // Wave 7, about twelve seconds in: enemies spread along the top run
-    // and turning the corner, shots mid-flight.
-    for (let i = 0; i < 750 && s.phase === 'playing'; i++) game.stepSim(STEP);
-    s.banner(`Wave 7 — the wind turns ${s.wind.label}, and the kites bend with it.`, 30);
+    playThrough(game, 10);
+    // Wave 10, the boss wave, about twenty-three seconds in: the Serpent
+    // is well onto the top run behind its escort, the pack is spread along
+    // the top run and turning the corner, and towers all along the ridge
+    // are firing. The wave cannot end this early — the Serpent takes
+    // ~25 seconds of focused fire to bring down.
+    for (let i = 0; i < 1400 && s.phase === 'playing'; i++) game.stepSim(STEP);
+    s.banner(`Wave 10 — the Storm Serpent comes, and the kites bend with it.`, 30);
     return;
   }
 
