@@ -17,7 +17,7 @@ export class GameState {
     this.time = 0; // seconds of sim time
 
     // Economy and run.
-    this.gold = 200;
+    this.gold = 280; // opening purse: three towers, so wave 1 is a fight, not a leak
     this.lives = 20;
     this.maxLives = 25;
     this.score = 0;

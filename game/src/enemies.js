@@ -92,9 +92,11 @@ export const ENEMIES = {
 };
 
 // Health scales with the wave so the same creature stays dangerous later.
-// Bosses scale slower than the pack, so wave 20 stays winnable.
+// Bosses scale slower than the pack, so wave 20 stays winnable — and the
+// growth is gentle enough that a full ridge of maxed towers can still hold
+// the last waves.
 export function scaledHp(def, wave) {
-  const growth = def.boss ? 0.1 : 0.18;
+  const growth = def.boss ? 0.1 : 0.15;
   return Math.round(def.hp * (1 + (wave - 1) * growth));
 }
 

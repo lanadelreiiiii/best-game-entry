@@ -108,9 +108,10 @@ export const TOWER_LEVELS = [
   { mult: 1, cost: 0, label: 'Lv 1' },
   { mult: 1.6, cost: 0.6, label: 'Lv 2' }, // upgrade cost = 60% of base cost
   { mult: 2.4, cost: 1.1, label: 'Lv 3' }, // upgrade cost = 110% of base cost
+  { mult: 3.4, cost: 1.8, label: 'Lv 4' }, // upgrade cost = 180% of base cost
 ];
 
-export const MAX_TOWER_LEVEL = 3;
+export const MAX_TOWER_LEVEL = 4;
 export const SELL_REFUND = 0.7; // 70% of everything invested, back
 
 // Stats of one tower instance, after its level and every Beacon aura that

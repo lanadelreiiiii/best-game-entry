@@ -25,7 +25,7 @@ click a tower to upgrade or sell. `Space` start wave / pause, `1–6` pick a tow
 
 - 6 towers: Kite Archer, Gale Fan, Storm Rod, Snare Kite, Ember Kite (burn), Beacon
 - 6 enemies: Wisp, Drifter, Gustling, Shearling, Storm Mender (heals the pack), Storm Serpent (boss every 5th wave)
-- 20 waves + endless, 1-of-3 gust blessings every 5 waves, 3 upgrade levels per tower
+- 20 waves + endless, 1-of-3 gust blessings every 5 waves, 4 upgrade levels per tower
 - Wind model: direction + strength per wave, curving projectiles, downwind range bonus
 - Procedural WebAudio (wind, shots, kills, lightning), particles, damage numbers, screen shake
 
