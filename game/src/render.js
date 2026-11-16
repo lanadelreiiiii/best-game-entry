@@ -3,13 +3,45 @@
 // trails of wind-bent shots, particles, and the wind itself — then it hands
 // the menus and HUD to hud.js.
 
-import { RIDGE_PATH, BUILD_NODES, PATH_WIDTH, NODE_RADIUS } from './ridge.js';
+import { RIDGE_PATH, BUILD_NODES, PATH_WIDTH, NODE_RADIUS, distanceToPath } from './ridge.js';
 import { drawHud, drawOverlays, hudLayout } from './hud.js';
+import { mulberry32 } from './random.js';
 
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    // Deterministic ridge decoration, fixed at construction: grass tufts,
+    // stones, wildflowers and grounded kites in the pockets between the
+    // path's runs. Positions are seeded once, never re-rolled per frame,
+    // so the board reads the same every run.
+    const rng = mulberry32(7);
+    this.terrain = [];
+    for (let gy = 0; gy < 9; gy++) {
+      for (let gx = 0; gx < 16; gx++) {
+        const x = 60 + gx * 76 + rng() * 40;
+        const y = 105 + gy * 58 + rng() * 30;
+        if (y > 610) continue;
+        if (distanceToPath(x, y) < 52) continue;
+        if (BUILD_NODES.some((n) => Math.hypot(n.x - x, n.y - y) < 58)) continue;
+        const roll = rng();
+        this.terrain.push({
+          x,
+          y,
+          kind: roll < 0.55 ? 'grass' : roll < 0.8 ? 'stone' : roll < 0.93 ? 'flower' : 'kite',
+          rot: rng() * Math.PI * 2,
+          s: 0.7 + rng() * 0.6,
+          hue: rng(),
+        });
+      }
+    }
+    // Three kites that live in the sky, drifting with the wind — the ridge
+    // is a place where kites fly, not just a battlefield.
+    this.skyKites = [
+      { x: 220, y: 70, s: 1.1, color: '#ff8c42', phase: 0 },
+      { x: 640, y: 52, s: 0.9, color: '#5ec8c0', phase: 2.1 },
+      { x: 1060, y: 82, s: 1.25, color: '#ffd94d', phase: 4.2 },
+    ];
   }
 
   draw(state) {
@@ -25,6 +57,7 @@ export class Renderer {
     }
     this.drawSky(ctx, state);
     this.drawHills(ctx);
+    this.drawTerrain(ctx, state);
     this.drawPath(ctx);
     this.drawNodes(ctx, state);
     this.drawTowers(ctx, state);
@@ -62,6 +95,100 @@ export class Renderer {
       ctx.beginPath();
       ctx.ellipse(cx, cy, 190, 15, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+    // Kites in the sky, drifting with the wind — they bob and sway, and
+    // their tails stream downwind.
+    const wind = state.wind.vector();
+    for (const k of this.skyKites) {
+      const bob = Math.sin(state.time * 0.9 + k.phase) * 7;
+      const sway = Math.sin(state.time * 0.5 + k.phase * 2) * 12;
+      const kx = k.x + sway + wind.x * 14;
+      const ky = k.y + bob + wind.y * 8;
+      ctx.save();
+      ctx.translate(kx, ky);
+      ctx.rotate(Math.sin(state.time * 0.7 + k.phase) * 0.25);
+      ctx.fillStyle = k.color;
+      ctx.strokeStyle = 'rgba(20, 28, 36, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -13 * k.s);
+      ctx.lineTo(10 * k.s, 0);
+      ctx.lineTo(0, 13 * k.s);
+      ctx.lineTo(-10 * k.s, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Tail streaming downwind.
+      ctx.strokeStyle = 'rgba(242, 234, 216, 0.75)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 13 * k.s);
+      const tx = wind.x * 26 + Math.sin(state.time * 2 + k.phase) * 5;
+      const ty = 13 * k.s + 24 + wind.y * 10;
+      ctx.quadraticCurveTo(6, 13 * k.s + 14, tx, ty);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // The ridge floor: grass, stones, wildflowers and grounded kites in the
+  // pockets the path leaves open. This is what stops the board reading as
+  // one big empty rectangle.
+  drawTerrain(ctx, state) {
+    const sway = Math.sin(state.time * 1.3) * 1.5;
+    for (const t of this.terrain) {
+      ctx.save();
+      ctx.translate(t.x, t.y);
+      ctx.rotate(t.rot);
+      if (t.kind === 'grass') {
+        ctx.strokeStyle = 'rgba(127, 224, 168, 0.4)';
+        ctx.lineWidth = 1.5;
+        for (let b = -1; b <= 1; b++) {
+          ctx.beginPath();
+          ctx.moveTo(b * 4, 0);
+          ctx.quadraticCurveTo(b * 4 + sway, -8 * t.s, b * 5 + sway * 1.5, -12 * t.s);
+          ctx.stroke();
+        }
+      } else if (t.kind === 'stone') {
+        ctx.fillStyle = 'rgba(90, 104, 118, 0.55)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7 * t.s, 5 * t.s, t.rot, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(242, 234, 216, 0.18)';
+        ctx.beginPath();
+        ctx.ellipse(-2 * t.s, -2 * t.s, 3 * t.s, 2 * t.s, t.rot, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (t.kind === 'flower') {
+        const petals = ['#e8a7d0', '#ffd94d', '#f2ead8'];
+        ctx.fillStyle = petals[Math.floor(t.hue * 3)];
+        for (let p = 0; p < 5; p++) {
+          const a = (p / 5) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * 4, Math.sin(a) * 4, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ff8c42';
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // A grounded kite, leaning in the grass — the ridge's own debris.
+        ctx.fillStyle = 'rgba(255, 140, 66, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(0, -9 * t.s);
+        ctx.lineTo(7 * t.s, 0);
+        ctx.lineTo(0, 9 * t.s);
+        ctx.lineTo(-7 * t.s, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(242, 234, 216, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 9 * t.s);
+        ctx.lineTo(10 * t.s, 18 * t.s);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
   }
 
@@ -174,9 +301,19 @@ export class Renderer {
   drawTower(ctx, tower) {
     const def = tower.def;
     const lvl = tower.level;
+    // Coloured ground ring: the tower's footprint, readable at a glance.
+    ctx.beginPath();
+    ctx.arc(tower.x, tower.y, 25, 0, Math.PI * 2);
+    ctx.fillStyle = def.color + '2e';
+    ctx.fill();
+    ctx.strokeStyle = def.color;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
     // Stone base.
     ctx.beginPath();
-    ctx.arc(tower.x, tower.y, 20, 0, Math.PI * 2);
+    ctx.arc(tower.x, tower.y, 23, 0, Math.PI * 2);
     ctx.fillStyle = '#4a5866';
     ctx.fill();
     ctx.strokeStyle = def.dark;
@@ -184,13 +321,13 @@ export class Renderer {
     ctx.stroke();
     // The kite itself, turning toward its target.
     ctx.save();
-    ctx.translate(tower.x, tower.y - 6);
+    ctx.translate(tower.x, tower.y - 7);
     ctx.rotate(tower.aim || -Math.PI / 2);
     ctx.fillStyle = def.color;
     ctx.strokeStyle = def.dark;
     ctx.lineWidth = 1.5;
     if (def.shape === 'diamond' || def.shape === 'hex') {
-      const r = def.shape === 'hex' ? 13 : 15;
+      const r = def.shape === 'hex' ? 15 : 17;
       ctx.beginPath();
       ctx.moveTo(r, 0);
       ctx.lineTo(0, r * 0.7);
@@ -202,30 +339,49 @@ export class Renderer {
     } else if (def.shape === 'fan') {
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.arc(0, 0, 15, -0.9, 0.9);
+      ctx.arc(0, 0, 17, -0.9, 0.9);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
     } else if (def.shape === 'rod') {
       ctx.beginPath();
-      ctx.moveTo(0, -16);
-      ctx.lineTo(5, 4);
-      ctx.lineTo(-5, 4);
+      ctx.moveTo(0, -18);
+      ctx.lineTo(6, 5);
+      ctx.lineTo(-6, 5);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(0, 8, 4, 0, Math.PI * 2);
+      ctx.arc(0, 9, 4.5, 0, Math.PI * 2);
       ctx.fillStyle = '#fff6c9';
       ctx.fill();
     } else if (def.shape === 'beacon') {
       ctx.beginPath();
-      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.arc(0, 0, 13, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#fff6c9';
       ctx.beginPath();
-      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (def.shape === 'flame') {
+      // Ember Kite: a flame that leans into the wind.
+      ctx.beginPath();
+      ctx.moveTo(0, -18);
+      ctx.quadraticCurveTo(11, -4, 8, 8);
+      ctx.quadraticCurveTo(4, 14, 0, 12);
+      ctx.quadraticCurveTo(-4, 14, -8, 8);
+      ctx.quadraticCurveTo(-11, -4, 0, -18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff6c9';
+      ctx.beginPath();
+      ctx.moveTo(0, -8);
+      ctx.quadraticCurveTo(5, 0, 3, 6);
+      ctx.quadraticCurveTo(0, 9, -3, 6);
+      ctx.quadraticCurveTo(-5, 0, 0, -8);
+      ctx.closePath();
       ctx.fill();
     }
     ctx.restore();
@@ -233,14 +389,14 @@ export class Renderer {
     ctx.strokeStyle = 'rgba(242, 234, 216, 0.6)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(tower.x, tower.y - 6);
-    ctx.lineTo(tower.x, tower.y + 12);
+    ctx.moveTo(tower.x, tower.y - 7);
+    ctx.lineTo(tower.x, tower.y + 14);
     ctx.stroke();
     // Level pips.
     for (let i = 0; i < lvl; i++) {
       ctx.fillStyle = '#ffd94d';
       ctx.beginPath();
-      ctx.arc(tower.x - 8 + i * 8, tower.y + 24, 2.5, 0, Math.PI * 2);
+      ctx.arc(tower.x - 9 + i * 9, tower.y + 28, 3, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -254,6 +410,23 @@ export class Renderer {
   drawEnemy(ctx, e, state) {
     const def = e.def;
     const slowed = state.time < e.slowUntil;
+    const burning = state.time < e.burnUntil;
+    // Ground shadow: lifts the creature off the path so it reads at a
+    // glance, even the pale Wisp.
+    ctx.fillStyle = 'rgba(10, 16, 22, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + def.radius * 0.75, def.radius * 0.9, def.radius * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // A Mender's healing ring: green, pulsing, so the player sees the
+    // priority target.
+    if (def.id === 'mender') {
+      const pulse = 0.25 + 0.15 * Math.sin(state.time * 4);
+      ctx.strokeStyle = `rgba(139, 224, 127, ${pulse + 0.25})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, def.radius + 10, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.save();
     ctx.translate(e.x, e.y);
     if (e.flash > 0) {
@@ -322,6 +495,15 @@ export class Renderer {
       ctx.moveTo(6, -6);
       ctx.lineTo(-6, 6);
       ctx.stroke();
+    } else if (def.shape === 'mender') {
+      // A mender: green orb with a white cross — it heals the pack.
+      ctx.beginPath();
+      ctx.arc(0, 0, def.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-2.5, -8, 5, 16);
+      ctx.fillRect(-8, -2.5, 16, 5);
     } else {
       // Serpent head.
       ctx.beginPath();
@@ -340,6 +522,18 @@ export class Renderer {
       ctx.fill();
     }
     ctx.restore();
+    // Burn: an Ember Kite set this one alight — orange flicker on top.
+    if (burning) {
+      const flick = 0.5 + 0.3 * Math.sin(state.time * 11 + e.wobble);
+      ctx.fillStyle = `rgba(255, 90, 60, ${flick * 0.55})`;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y - def.radius * 0.3, def.radius * 0.85, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd94d';
+      ctx.beginPath();
+      ctx.arc(e.x, e.y - def.radius * 0.5, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // Slow tint.
     if (slowed) {
       ctx.fillStyle = 'rgba(180, 140, 232, 0.35)';
@@ -361,8 +555,9 @@ export class Renderer {
     for (const p of state.projectiles) {
       if (p.trail.length > 1) {
         ctx.strokeStyle = p.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 3.5;
+        ctx.globalAlpha = 0.85;
+        ctx.lineCap = 'round';
         ctx.beginPath();
         p.trail.forEach((t, i) => (i === 0 ? ctx.moveTo(t.x, t.y) : ctx.lineTo(t.x, t.y)));
         ctx.lineTo(p.x, p.y);
@@ -372,7 +567,7 @@ export class Renderer {
       if (p.kind === 'rod') {
         // Lightning: a jittered bright line from the shot's tail to its head.
         ctx.strokeStyle = '#fff6c9';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         const tail = p.trail[0] || { x: p.x - 20, y: p.y };
@@ -380,9 +575,19 @@ export class Renderer {
         ctx.lineTo(tail.x, tail.y);
         ctx.stroke();
       }
+      // A glowing head: the shot itself must read in a still frame, not
+      // just its trail — this is what shows the wind bending the shot.
+      ctx.save();
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 12;
       ctx.fillStyle = p.kind === 'rod' ? '#fff6c9' : p.color;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.kind === 'rod' ? 4 : 3.5, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.kind === 'rod' ? 5 : 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -410,22 +615,39 @@ export class Renderer {
   drawWindStreaks(ctx, state) {
     const wind = state.wind.vector();
     const strength = state.wind.effectiveStrength();
-    const count = Math.round(10 + strength * 22);
-    ctx.strokeStyle = `rgba(242, 234, 216, ${0.1 + strength * 0.16})`;
-    ctx.lineWidth = 1.5;
+    const count = Math.round(14 + strength * 26);
+    ctx.strokeStyle = `rgba(242, 234, 216, ${0.16 + strength * 0.22})`;
+    ctx.lineWidth = 2;
     for (let i = 0; i < count; i++) {
       const seed = i * 137.5;
       const speed = 40 + strength * 160;
       const span = 1600;
       const t = ((state.time * speed + seed) % span) - 160;
       const lane = 90 + ((i * 53) % 580);
-      const len = 26 + strength * 42;
+      const len = 30 + strength * 48;
       const x = t + lane * 0.35;
       const y = lane;
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + wind.x * len, y + wind.y * len);
       ctx.stroke();
+    }
+    // Leaves on the wind: a few petals and dry leaves ride the gusts, so
+    // the wind's direction is visible even where there are no streaks.
+    ctx.fillStyle = 'rgba(255, 217, 77, 0.7)';
+    for (let i = 0; i < 9; i++) {
+      const seed = i * 211.3;
+      const speed = 30 + strength * 120;
+      const span = 1500;
+      const t = ((state.time * speed + seed) % span) - 110;
+      const lane = 110 + ((i * 89) % 540);
+      const x = t + lane * 0.3;
+      const y = lane + Math.sin(state.time * 2 + i * 1.7) * 10;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(state.time * 3 + i);
+      ctx.fillRect(-3, -1.5, 6, 3);
+      ctx.restore();
     }
   }
 }
