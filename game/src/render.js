@@ -432,6 +432,10 @@ export class Renderer {
     if (e.flash > 0) {
       ctx.shadowColor = '#ffffff';
       ctx.shadowBlur = 14;
+    } else if (def.id === 'wisp') {
+      // The pale Wisp glows cyan so it never washes out against the path.
+      ctx.shadowColor = '#7fd4ff';
+      ctx.shadowBlur = 10;
     }
     if (def.shape === 'serpent') {
       // Segmented body trailing behind the head.

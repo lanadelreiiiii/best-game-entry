@@ -16,9 +16,10 @@ export function buildWave(wave, rng) {
   for (let i = 0; i < count; i++) {
     const roll = rng();
     let type = 'wisp';
-    if (wave >= 3 && roll < 0.3) type = 'drifter';
-    else if (wave >= 4 && roll < 0.5) type = 'gustling';
-    else if (wave >= 6 && roll < 0.62) type = 'shearling';
+    if (wave >= 3 && roll < 0.28) type = 'drifter';
+    else if (wave >= 4 && roll < 0.46) type = 'gustling';
+    else if (wave >= 5 && roll < 0.56) type = 'mender';
+    else if (wave >= 6 && roll < 0.66) type = 'shearling';
     else if (wave >= 2 && roll < 0.8) type = 'drifter';
     spawns.push({ type, delay });
     // Spawn gap shrinks as waves get harder: 0.8s early, 0.35s late.
@@ -116,6 +117,8 @@ export function spawnEnemy(type, wave, spawnIndex = 0) {
     angle: 0,
     slowUntil: 0,
     slowFactor: 1,
+    burnUntil: 0, // Ember Kite burn: time until the flames go out
+    burnDps: 0, // damage per second while burning
     flash: 0, // hit-flash timer, for the renderer
     wobble: (spawnIndex * 2.39996) % (Math.PI * 2), // golden-angle spread
     dead: false,

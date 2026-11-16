@@ -20,6 +20,7 @@ const STAGED_TOWERS = [
   { node: 0, type: 'archer', upgrades: 1 },
   { node: 1, type: 'fan', upgrades: 0 },
   { node: 2, type: 'rod', upgrades: 1 },
+  { node: 3, type: 'ember', upgrades: 0 },
   { node: 4, type: 'snare', upgrades: 1 },
   { node: 5, type: 'beacon', upgrades: 0 },
   { node: 6, type: 'archer', upgrades: 0 },
@@ -99,10 +100,10 @@ export function stageShot(game, name, seed) {
 
   if (name === 'play') {
     playThrough(game, 7);
-    // Wave 7, about eleven seconds in: enemies spread along the top run
+    // Wave 7, about twelve seconds in: enemies spread along the top run
     // and turning the corner, shots mid-flight.
-    for (let i = 0; i < 650 && s.phase === 'playing'; i++) game.stepSim(STEP);
-    s.banner('Wave 7 — the wind turns NW, and the kites bend with it.', 30);
+    for (let i = 0; i < 750 && s.phase === 'playing'; i++) game.stepSim(STEP);
+    s.banner(`Wave 7 — the wind turns ${s.wind.label}, and the kites bend with it.`, 30);
     return;
   }
 

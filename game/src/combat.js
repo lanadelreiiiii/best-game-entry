@@ -115,6 +115,8 @@ export class Combat {
       knockback: stats.knockback || 0,
       slowFactor: stats.slowFactor || 0,
       slowTime: stats.slowTime || 0,
+      burnDps: stats.burnDps || 0,
+      burnTime: stats.burnTime || 0,
       life: 2.5,
       windCatch: Math.max(0, tower.def.windCatch + s.mods.windCatch),
       color: tower.def.color,
@@ -197,6 +199,11 @@ export class Combat {
       enemy.slowFactor = p.slowFactor;
       enemy.slowUntil = s.time + p.slowTime;
     }
+    if (p.burnDps > 0 && !enemy.dead) {
+      // Ember burn: the strongest flame wins, and every hit re-lights it.
+      enemy.burnDps = Math.max(enemy.burnDps, p.burnDps);
+      enemy.burnUntil = s.time + p.burnTime;
+    }
   }
 
   // Damage one enemy; handles death, rewards, splitting and boss shakes.
@@ -237,8 +244,28 @@ export class Combat {
 
   updateEnemies(dt) {
     const s = this.s;
+    // Menders heal the pack around them — the healing is part of the sim,
+    // so it runs before anyone moves or dies this tick.
+    for (const m of s.enemies) {
+      if (m.dead || m.leaked || m.def.id !== 'mender') continue;
+      for (const e of s.enemies) {
+        if (e === m || e.dead || e.leaked) continue;
+        if (e.hp >= e.maxHp) continue;
+        if (Math.hypot(e.x - m.x, e.y - m.y) <= m.def.healRadius) {
+          e.hp = Math.min(e.maxHp, e.hp + m.def.healRate * dt);
+        }
+      }
+    }
     for (const e of s.enemies) {
       if (e.dead || e.leaked) continue;
+      // Ember burn: damage over time, and it can finish the kill.
+      if (s.time < e.burnUntil && e.burnDps > 0) {
+        e.hp -= e.burnDps * dt;
+        if (e.hp <= 0) {
+          this.damage(e, 0, null);
+          continue;
+        }
+      }
       const slowed = s.time < e.slowUntil ? e.slowFactor : 1;
       const speed = e.def.speed * slowed;
       e.dist += speed * dt;

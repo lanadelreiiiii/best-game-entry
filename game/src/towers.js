@@ -1,6 +1,7 @@
-// KITEWARDEN — the five kite towers. Each tower is one clear job: the
+// KITEWARDEN — the six kite towers. Each tower is one clear job: the
 // Archer is cheap and fast, the Fan shoves enemies back with the wind, the
-// Rod calls lightning, the Snare slows the pack, and the Beacon makes its
+// Rod calls lightning, the Snare slows the pack, the Ember sets enemies
+// alight so they burn after the shot lands, and the Beacon makes its
 // neighbours stronger. Every tower upgrades twice; each level multiplies its
 // stats and changes its kite's look.
 
@@ -65,6 +66,22 @@ export const TOWERS = {
     dark: '#7a55b0',
     shape: 'hex',
   },
+  ember: {
+    id: 'ember',
+    name: 'Ember Kite',
+    blurb: 'Shots set enemies alight — they keep burning after the hit.',
+    cost: 90,
+    range: 145,
+    damage: 10,
+    rate: 1.2,
+    projectileSpeed: 380,
+    windCatch: 0.6,
+    burnDps: 8, // damage per second while burning
+    burnTime: 3, // seconds of burn per hit (refreshes)
+    color: '#ff5a3c',
+    dark: '#b03018',
+    shape: 'flame',
+  },
   beacon: {
     id: 'beacon',
     name: 'Beacon',
@@ -83,7 +100,7 @@ export const TOWERS = {
   },
 };
 
-export const TOWER_ORDER = ['archer', 'fan', 'rod', 'snare', 'beacon'];
+export const TOWER_ORDER = ['archer', 'fan', 'rod', 'snare', 'ember', 'beacon'];
 
 // Upgrade multipliers per level (level 1 is the base stats above).
 export const TOWER_LEVELS = [
@@ -110,6 +127,8 @@ export function towerStats(def, level, buffs) {
     chain: def.chain || 0,
     slowFactor: def.slowFactor || 0,
     slowTime: def.slowTime || 0,
+    burnDps: (def.burnDps || 0) * lv.mult,
+    burnTime: def.burnTime || 0,
   };
 }
 

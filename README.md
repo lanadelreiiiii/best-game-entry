@@ -18,13 +18,13 @@ node serve.ts
 ```
 
 No build step, no network: `game/` is plain static files. Click a ridge node to build,
-click a tower to upgrade or sell. `Space` start wave / pause, `1–5` pick a tower, `F` speed ×2,
+click a tower to upgrade or sell. `Space` start wave / pause, `1–6` pick a tower, `F` speed ×2,
 `R` restart, `M` mute.
 
 ## What's inside
 
-- 5 towers: Kite Archer, Gale Fan, Storm Rod, Snare Kite, Beacon
-- 5 enemies: Wisp, Drifter, Gustling, Shearling, Storm Serpent (boss every 5th wave)
+- 6 towers: Kite Archer, Gale Fan, Storm Rod, Snare Kite, Ember Kite (burn), Beacon
+- 6 enemies: Wisp, Drifter, Gustling, Shearling, Storm Mender (heals the pack), Storm Serpent (boss every 5th wave)
 - 20 waves + endless, 1-of-3 gust blessings every 5 waves, 3 upgrade levels per tower
 - Wind model: direction + strength per wave, curving projectiles, downwind range bonus
 - Procedural WebAudio (wind, shots, kills, lightning), particles, damage numbers, screen shake

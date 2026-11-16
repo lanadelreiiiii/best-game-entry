@@ -1,8 +1,8 @@
-// KITEWARDEN — the five storm creatures that walk the ridge. Each one is
+// KITEWARDEN — the six storm creatures that walk the ridge. Each one is
 // a different problem: the Wisp is fast and fragile, the Drifter soaks
 // damage, the Gustling ignores shoves, the Shearling splits in two when it
-// dies, and the Storm Serpent — the boss of every fifth wave — is all of
-// them at once, bigger.
+// dies, the Mender heals the pack around it — kill it first — and the Storm
+// Serpent, the boss of every fifth wave, is all of them at once, bigger.
 
 export const ENEMIES = {
   wisp: {
@@ -13,7 +13,7 @@ export const ENEMIES = {
     speed: 70, // pixels per second along the path
     reward: 6, // gold on kill
     lives: 1, // lives lost if it reaches the east gate
-    radius: 10,
+    radius: 13,
     color: '#cfe8ff',
     dark: '#7fb2e0',
     shape: 'wisp',
@@ -26,9 +26,9 @@ export const ENEMIES = {
     speed: 40,
     reward: 12,
     lives: 1,
-    radius: 15,
-    color: '#9aa7b5',
-    dark: '#5d6b7a',
+    radius: 19,
+    color: '#8fa3b8',
+    dark: '#54657a',
     shape: 'drifter',
   },
   gustling: {
@@ -39,7 +39,7 @@ export const ENEMIES = {
     speed: 56,
     reward: 10,
     lives: 1,
-    radius: 12,
+    radius: 15,
     color: '#7fe0a8',
     dark: '#3f9e68',
     shape: 'gustling',
@@ -53,12 +53,27 @@ export const ENEMIES = {
     speed: 52,
     reward: 14,
     lives: 2,
-    radius: 13,
+    radius: 16,
     color: '#e8a7d0',
     dark: '#b06a94',
     shape: 'shearling',
     splitsInto: 'wisp',
     splitCount: 2,
+  },
+  mender: {
+    id: 'mender',
+    name: 'Storm Mender',
+    blurb: 'Mends the pack around it — kill it first, or the wave out-heals you.',
+    hp: 70,
+    speed: 48,
+    reward: 16,
+    lives: 1,
+    radius: 14,
+    color: '#8be07f',
+    dark: '#4a9e3f',
+    shape: 'mender',
+    healRate: 6, // hp per second it restores to each nearby ally
+    healRadius: 95,
   },
   serpent: {
     id: 'serpent',
@@ -68,7 +83,7 @@ export const ENEMIES = {
     speed: 30,
     reward: 150,
     lives: 5,
-    radius: 26,
+    radius: 30,
     color: '#ffd94d',
     dark: '#8a6d1f',
     shape: 'serpent',

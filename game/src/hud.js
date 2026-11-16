@@ -34,9 +34,11 @@ export function hudLayout(state) {
   if (state.selection && state.selection.kind === 'node') {
     const node = state.nodes[state.selection.id];
     const px = Math.min(1020, node.x + 40);
-    const py = Math.max(66, Math.min(560, node.y - 90));
+    // Six rows must fit on screen even for the lowest nodes.
+    const menuH = TOWER_ORDER.length * 48;
+    const py = Math.max(66, Math.min(720 - menuH - 12, node.y - 90));
     TOWER_ORDER.forEach((id, i) => {
-      L.buildMenu.push({ id, r: rect(px, py + i * 52, 220, 46) });
+      L.buildMenu.push({ id, r: rect(px, py + i * 48, 220, 44) });
     });
   }
   if (state.selection && state.selection.kind === 'tower') {
@@ -258,11 +260,11 @@ function drawTitle(ctx, state, layout) {
   ctx.fillText('and face the Storm Serpent every fifth wave — then keep going, endlessly.', 640, 378);
   ctx.font = '14px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(242, 234, 216, 0.7)';
-  ctx.fillText('Click a node to build · 1–5 pick a tower · Space starts a wave · F fast-forward · R restart', 640, 420);
+  ctx.fillText('Click a node to build · 1–6 pick a tower · Space starts a wave · F fast-forward · R restart', 640, 420);
   button(ctx, layout.titleStart, '▶  START THE DEFENSE', {});
   ctx.fillStyle = 'rgba(242, 234, 216, 0.6)';
   ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText('20 waves + endless · 5 towers · 5 enemies · a blessing every 5 waves', 640, 560);
+  ctx.fillText('20 waves + endless · 6 towers · 6 enemies · a blessing every 5 waves', 640, 560);
 }
 
 function drawBuildMenu(ctx, state, layout) {
