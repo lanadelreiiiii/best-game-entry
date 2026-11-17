@@ -10,7 +10,10 @@
 // Vane spots were picked off the path and off the build nodes on purpose:
 // every spot is more than 60px from any path segment and more than 70px
 // from the nearest build node, one in each band of the map (top, middle,
-// bottom), so each vane guards a different stretch of the ridge.
+// bottom), so each vane guards a different stretch of the ridge. The
+// middle vane sits between the Ridge and Valley lanes, where the fork
+// splits — its ring covers both lanes, so one turn bends shots over
+// either road.
 
 export const VANE_RADIUS = 170; // influence ring, in pixels
 export const VANE_BLEND = 0.65; // how far the local wind leans to the vane at its centre
@@ -31,7 +34,7 @@ export const WIND_HEADINGS = [
 
 export const VANE_SPOTS = [
   { x: 330, y: 245 }, // top band: between the top and middle runs, over nodes 0-1
-  { x: 880, y: 475 }, // middle band: between the middle and bottom runs, by the corner
+  { x: 780, y: 465 }, // middle band: between the Ridge and Valley lanes, east of node 4
   { x: 430, y: 665 }, // bottom band: under the bottom run, guarding the east gate road
 ];
 

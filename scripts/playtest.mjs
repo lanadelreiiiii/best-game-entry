@@ -3,7 +3,10 @@
 // wind vane twice with the mouse (free, and it rotates) -> start wave 1
 // with Space -> let it run -> pause and resume -> restart. Asserts the
 // wave actually starts, towers actually fire, vanes actually turn, and
-// nothing throws. Exits non-zero on any failure. Writes one evidence
+// nothing throws. Then it checks the Forked Paths mechanic: both lanes
+// exist and are equal length, waves split across them deterministically,
+// the banner names the split, and a Scout Kite at the fork takes the
+// less-defended lane. Exits non-zero on any failure. Writes one evidence
 // screenshot to /tmp (never into screenshots/, which only holds staged
 // shots).
 //
@@ -167,6 +170,127 @@ try {
   await page.waitForTimeout(400);
   st = await readState();
   check('R restarts the run', st && st.phase === 'playing' && st.wave === 0 && st.gold === 280, JSON.stringify(st));
+
+  // --- Forked Paths (probe #4): the fork, the split, the Scout Kite,
+  // and both lanes on the canvas. All of it runs against the real game
+  // modules, imported from the served page.
+  const fork = await page.evaluate(async () => {
+    const g = window.__kitewarden;
+    const ridge = await import('/src/ridge.js');
+    const waves = await import('/src/waves.js');
+    const enemies = await import('/src/enemies.js');
+    const { mulberry32 } = await import('/src/random.js');
+    const out = {};
+    // 1. Both lanes exist, are the same length, and fork at (900, 360).
+    out.laneLengths = { ridge: ridge.ridgeLength(), valley: ridge.valleyLength() };
+    out.fork = { point: ridge.FORK_POINT, dist: ridge.FORK_DIST, wave: ridge.FORK_WAVE };
+    out.forkOpens = { wave2: waves.buildWave(2, mulberry32(7)).fork, wave3: waves.buildWave(3, mulberry32(7)).fork };
+    // 2. A wave's split is deterministic for a seed, and uses both lanes.
+    const a = waves.buildWave(6, mulberry32(7));
+    const b = waves.buildWave(6, mulberry32(7));
+    out.splitDeterministic = JSON.stringify(a.spawns) === JSON.stringify(b.spawns);
+    out.split = a.split;
+    out.splitLanes = [...new Set(a.spawns.map((s) => s.lane))].sort();
+    // 3. The Scout Kite is faster than a Wisp and frailer than a Wisp.
+    out.scout = { speed: enemies.ENEMIES.scout.speed, hp: enemies.ENEMIES.scout.hp };
+    out.wisp = { speed: enemies.ENEMIES.wisp.speed, hp: enemies.ENEMIES.wisp.hp };
+    // 4. The wave banner names the split when wave 3 starts.
+    g.reset(7);
+    let s = g.state;
+    s.phase = 'playing';
+    s.audio = null;
+    s.wave = 2;
+    s.waveState = 'idle';
+    g.startWave();
+    out.banner = s.message;
+    out.forkSplit = s.forkSplit;
+    out.queueLanes = [...new Set(s.spawnQueue.map((q) => q.enemy.lane))].sort();
+    // 5. A scout at the fork takes the less-defended lane: two archers
+    // on the ridge side only (node 1 covers the middle run, node 3 covers
+    // the bottom run; nothing watches the valley lane), so it must choose
+    // valley.
+    g.reset(11);
+    s = g.state;
+    s.phase = 'playing';
+    s.audio = null;
+    s.wave = 5;
+    s.waveState = 'fighting';
+    g.buildAt(1, 'archer');
+    g.buildAt(3, 'archer');
+    const scout = waves.spawnEnemy('scout', 5, 0, 'ridge');
+    scout.dist = ridge.FORK_DIST - 2;
+    s.enemies.push(scout);
+    const STEP = 1 / 60;
+    let ticks = 0;
+    while (!scout.forked && ticks < 600) {
+      g.stepSim(STEP);
+      ticks++;
+    }
+    out.scoutLane = scout.lane;
+    out.scoutForked = scout.forked;
+    out.towersOnLanes = { ridge: g.combat.towersOnLane('ridge'), valley: g.combat.towersOnLane('valley') };
+    // 6. Both lanes render: sample the canvas bed of each lane, off the
+    // dashed centre line, on a plain playing board.
+    g.reset(1);
+    s = g.state;
+    s.phase = 'playing';
+    s.waveState = 'idle';
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const sample = (x, y) => {
+      const d = ctx.getImageData(x, y, 1, 1).data;
+      return [d[0], d[1], d[2]];
+    };
+    const close = (p, rgb, tol = 30) =>
+      Math.abs(p[0] - rgb[0]) <= tol && Math.abs(p[1] - rgb[1]) <= tol && Math.abs(p[2] - rgb[2]) <= tol;
+    const ridgeHits = [600, 640, 680].filter((x) => close(sample(x, 350), [138, 109, 75])).length;
+    const valleyHits = [600, 640, 680].filter((x) => close(sample(x, 530), [113, 131, 90])).length;
+    out.render = { ridgeHits, valleyHits };
+    return out;
+  });
+
+  check(
+    'fork lanes equal length (2828)',
+    fork.laneLengths.ridge === 2828 && fork.laneLengths.valley === 2828,
+    JSON.stringify(fork.laneLengths),
+  );
+  check(
+    'fork node at (900,360), 1154px in, opens wave 3',
+    fork.fork.point.x === 900 && fork.fork.point.y === 360 && fork.fork.dist === 1154 &&
+      fork.fork.wave === 3 && fork.forkOpens.wave2 === false && fork.forkOpens.wave3 === true,
+    JSON.stringify(fork.fork) + ' ' + JSON.stringify(fork.forkOpens),
+  );
+  check(
+    'wave 6 splits both lanes, deterministically',
+    fork.splitDeterministic && fork.split.ridge > 0 && fork.split.valley > 0 &&
+      fork.splitLanes.length === 2,
+    JSON.stringify(fork.split) + ' lanes=' + JSON.stringify(fork.splitLanes),
+  );
+  check(
+    'wave banner names the split',
+    typeof fork.banner === 'string' && fork.banner.includes('Ridge') && fork.banner.includes('Valley') &&
+      fork.forkSplit && fork.forkSplit.ridge > 0 && fork.forkSplit.valley > 0 &&
+      fork.queueLanes.length === 2,
+    JSON.stringify(fork.banner) + ' ' + JSON.stringify(fork.forkSplit),
+  );
+  check(
+    'scout kite: faster and frailer than wisp',
+    fork.scout.speed > fork.wisp.speed && fork.scout.hp < fork.wisp.hp,
+    JSON.stringify({ scout: fork.scout, wisp: fork.wisp }),
+  );
+  check(
+    'scout takes the less-defended lane at the fork',
+    fork.scoutForked === true && fork.scoutLane === 'valley' &&
+      fork.towersOnLanes.ridge === 2 && fork.towersOnLanes.valley === 0,
+    JSON.stringify({ lane: fork.scoutLane, towers: fork.towersOnLanes }),
+  );
+  check(
+    'both lanes render (ridge brown, valley green)',
+    fork.render.ridgeHits >= 2 && fork.render.valleyHits >= 2,
+    JSON.stringify(fork.render),
+  );
 
   await page.screenshot({ path: '/tmp/kitewarden-playtest.png' });
   await browser.close();

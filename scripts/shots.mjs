@@ -97,6 +97,15 @@ try {
       const g = window.__kitewarden;
       if (!g) return { error: 'no game on window' };
       const s = g.state;
+      // Lane counts, so the fork shot's evidence is in the log: how many
+      // live enemies are on the Ridge lane vs the Valley lane, and how
+      // many of them are Scout Kites.
+      const lanes = { ridge: 0, valley: 0, scouts: 0 };
+      for (const e of s.enemies) {
+        if (e.lane === 'valley') lanes.valley++;
+        else lanes.ridge++;
+        if (e.def.id === 'scout') lanes.scouts++;
+      }
       return {
         phase: s.phase,
         wave: s.wave,
@@ -108,6 +117,9 @@ try {
         projectiles: s.projectiles.length,
         blessing: s.blessingOffer ? s.blessingOffer.length : 0,
         vanes: s.vanes.all().map((v) => s.vanes.labelOf(v)),
+        lanes,
+        forkSplit: s.forkSplit || null,
+        banner: s.message || '',
       };
     });
     console.log(`  state: ${JSON.stringify(state)}`);

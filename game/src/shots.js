@@ -8,14 +8,16 @@
 //   start  — the title screen over the ridge, wind streaks drifting, the
 //             three vanes pointing three different ways under the design
 //             note that names the mechanic
-//   play   — wave 10, the boss wave: a gale blowing north, the top vane
-//             turned east, so the shots flying through its ring bend
-//             visibly sideways while the Storm Serpent crosses the top run
+//   play   — wave 6 at the fork: the storm splits across the Ridge and
+//             Valley lanes (both lanes full of enemies, the fork signpost
+//             between them), a northerly gale, the top vane turned east
+//             so shots bend visibly sideways through its ring
 //   vane   — wave 7 mid-fight, the middle vane just turned to SE: the
 //             pulse ring still expanding, "TURNED SE" over its ring
 //   end    — the victory screen after wave 20, the Serpent defeated
 
 import { TOTAL_WAVES, drawBlessings } from './waves.js';
+import { FORK_DIST } from './ridge.js';
 
 const STEP = 1 / 60;
 
@@ -110,6 +112,18 @@ function playThrough(game, targetWave) {
   }
 }
 
+// How many live enemies are past the fork on each lane right now.
+function lanesPastFork(state) {
+  let ridge = 0;
+  let valley = 0;
+  for (const e of state.enemies) {
+    if (e.dist <= FORK_DIST) continue;
+    if (e.lane === 'valley') valley++;
+    else ridge++;
+  }
+  return { ridge, valley };
+}
+
 export function stageShot(game, name, seed) {
   game.reset(seed);
   const s = game.state;
@@ -132,13 +146,23 @@ export function stageShot(game, name, seed) {
   placeStagedTowers(game);
 
   if (name === 'play') {
-    playThrough(game, 10);
-    // Wave 10, the boss wave, about twenty-three seconds in: the Serpent
-    // is well onto the top run behind its escort, the pack is spread along
-    // the top run and turning the corner, and towers all along the ridge
-    // are firing. The wave cannot end this early — the Serpent takes
-    // ~25 seconds of focused fire to bring down.
-    for (let i = 0; i < 1400 && s.phase === 'playing'; i++) game.stepSim(STEP);
+    // The fork shot: wave 6, stepped until the storm is visibly split —
+    // at least two enemies past the fork on EACH lane — so the still
+    // shows the Ridge lane and the Valley lane both full, the fork
+    // signpost between them, and a Scout Kite somewhere in the pack.
+    // Wave 6 is past the fork's opening (wave 3) and has scouts in it.
+    playThrough(game, 6);
+    let waited = 0;
+    let split = lanesPastFork(s);
+    while (
+      s.phase === 'playing' &&
+      (split.ridge < 2 || split.valley < 2) &&
+      waited < 3600
+    ) {
+      game.stepSim(STEP);
+      waited++;
+      split = lanesPastFork(s);
+    }
     // The bending shot: a northerly gale, and the top vane turned east.
     // Shots from the ridge towers toward the top run cross the vane's
     // ring and curve east, away from the global wind — the mechanic,
@@ -150,7 +174,11 @@ export function stageShot(game, name, seed) {
     turnVaneTo(game, 1, 'S');
     turnVaneTo(game, 2, 'W');
     for (let i = 0; i < 120 && s.phase === 'playing'; i++) game.stepSim(STEP);
-    s.banner(`Wave 10 — gale from the north! Top vane turned E: shots bend east inside its ring.`, 30);
+    const fork = s.forkSplit;
+    const splitText = fork
+      ? `Wave 6 splits Ridge ${fork.ridgePct}% / Valley ${100 - fork.ridgePct}% — the fork is open, scouts take the emptier lane.`
+      : `Wave 6 — the path forks at the signpost: Ridge and Valley lanes.`;
+    s.banner(splitText, 30);
     return;
   }
 

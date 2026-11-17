@@ -3,9 +3,9 @@
 // build menu, the tower panel, the blessing choice, and the title / victory
 // / game-over / paused screens. `hudLayout` returns every clickable rect,
 // so input.js and the renderer always agree on where things are.
-// The cover's design note names the wind-vane mechanic outright, and a
-// one-line legend at the bottom of the screen keeps it in front of the
-// player all run long.
+// The cover's design note names the wind-vane mechanic outright and the
+// fork in one line, and a one-line legend at the bottom of the screen keeps
+// the vane mechanic in front of the player all run long.
 
 import { TOWERS, TOWER_ORDER, upgradeCost, MAX_TOWER_LEVEL } from './towers.js';
 
@@ -266,7 +266,7 @@ function drawTitle(ctx, state, layout) {
     352,
   );
   ctx.fillText(
-    'Build on the ridge nodes, turn the vanes to steer the wind, hold 20 waves,',
+    'Build on the ridge nodes, turn the vanes to steer the wind, hold both fork lanes,',
     640,
     376,
   );
@@ -277,7 +277,7 @@ function drawTitle(ctx, state, layout) {
   button(ctx, layout.titleStart, '▶  START THE DEFENSE', {});
   ctx.fillStyle = 'rgba(242, 234, 216, 0.6)';
   ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText('20 waves + endless · 6 towers · 6 enemies · 3 wind vanes · a blessing every 5 waves', 640, 560);
+  ctx.fillText('20 waves + endless · 6 towers · 7 enemies · 3 wind vanes · a blessing every 5 waves', 640, 560);
 }
 
 function drawBuildMenu(ctx, state, layout) {

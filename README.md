@@ -8,7 +8,9 @@ A wind-and-kite tower defense for make.fun's "Make the best game" bounty ($1,000
 
 **The game in one sentence:** build kite towers on ridge nodes, and the wind — which shifts
 every wave — bends every shot, so a tower standing downwind reaches farther; **click a
-Wind Vane to turn the wind** and bend shots around corners inside its ring; hold 20 waves
+Wind Vane to turn the wind** and bend shots around corners inside its ring; from wave 3
+**the path forks** into a Ridge lane and a Valley lane and every wave splits across both,
+while the Scout Kite slips down whichever lane has fewer towers watching it; hold 20 waves
 against wisps, drifters and the Storm Serpent, then keep going in endless mode.
 
 ## Play it
@@ -26,7 +28,7 @@ even mid-wave). `Space` start wave / pause, `1–6` pick a tower, `F` speed ×2,
 ## What's inside
 
 - 6 towers: Kite Archer, Gale Fan, Storm Rod, Snare Kite, Ember Kite (burn), Beacon
-- 6 enemies: Wisp, Drifter, Gustling, Shearling, Storm Mender (heals the pack), Storm Serpent (boss every 5th wave)
+- 7 enemies: Wisp, Drifter, Gustling, Shearling, Storm Mender (heals the pack), Scout Kite (fast, takes the emptier lane at the fork), Storm Serpent (boss every 5th wave)
 - 20 waves + endless, 1-of-3 gust blessings every 5 waves, 4 upgrade levels per tower
 - Wind model: direction + strength per wave, curving projectiles, downwind range bonus
 - **Wind Vanes (the mechanic):** 3 turnable vanes on open ground, one per band of the map.
@@ -36,6 +38,19 @@ even mid-wave). `Space` start wave / pause, `1–6` pick a tower, `F` speed ×2,
   downwind range bonus is judged on the local wind. Vanes re-align to each new wave's
   wind at wave start. Big kite-vane arrow, dashed influence ring, compass label, pulse
   ring on every turn.
+- **Forked Paths (the second lane):** from wave 3 the serpentine path forks at the
+  mid-map signpost into two lanes that converge again at the base — the **Ridge** lane
+  (the old high road west along y=360) and the **Valley** lane (south, then west along
+  the mossy-green valley floor at y=540). Both lanes are exactly the same length, so
+  neither is a shortcut and distance-travelled means the same thing on either one.
+  Each wave's split is seeded (35–65% Ridge) and named in the wave banner, e.g.
+  "Wave 6 splits Ridge 60% / Valley 40%". The fork signpost, the lane labels and the
+  Valley lane's green tint make the split visible in every screenshot.
+- **Scout Kite:** the fastest, most fragile creature on the ridge (88 px/s, 20 HP, from
+  wave 5). At the fork it counts the attacking towers in range of each lane and takes
+  the less-defended one — seeded tiebreak — so a ridge stacked on one lane gets
+  flanked down the other. Slim orange diamond with a gold pennant: nothing else on
+  the ridge looks like it.
 - Procedural WebAudio (wind, shots, kills, lightning, vane chime), particles, damage numbers, screen shake
 
 ## Hand it in

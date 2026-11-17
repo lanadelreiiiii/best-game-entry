@@ -3,7 +3,7 @@
 // trails of wind-bent shots, particles, the wind vanes and their rings,
 // and the wind itself — then it hands the menus and HUD to hud.js.
 
-import { RIDGE_PATH, BUILD_NODES, PATH_WIDTH, NODE_RADIUS, distanceToPath } from './ridge.js';
+import { RIDGE_PATH, VALLEY_LANE, FORK_POINT, BUILD_NODES, PATH_WIDTH, NODE_RADIUS, distanceToPath } from './ridge.js';
 import { drawHud, drawOverlays, hudLayout } from './hud.js';
 import { mulberry32 } from './random.js';
 
@@ -215,28 +215,90 @@ export class Renderer {
     ctx.fill();
   }
 
-  drawPath(ctx) {
+  // One lane of the path: a dark edge, a coloured bed, and a dashed
+  // centre line. The Ridge lane keeps the warm brown bed; the Valley lane
+  // is mossy green, so the two roads read apart at a glance.
+  drawLane(ctx, points, edge, fill) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#6b543a';
+    ctx.strokeStyle = edge;
     ctx.lineWidth = PATH_WIDTH + 8;
     ctx.beginPath();
-    RIDGE_PATH.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
     ctx.stroke();
-    ctx.strokeStyle = '#8a6d4b';
+    ctx.strokeStyle = fill;
     ctx.lineWidth = PATH_WIDTH;
     ctx.stroke();
     ctx.strokeStyle = 'rgba(242, 234, 216, 0.35)';
     ctx.lineWidth = 3;
     ctx.setLineDash([14, 18]);
-    ctx.beginPath();
-    RIDGE_PATH.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  drawPath(ctx) {
+    // The Valley lane first — it merges into the bottom run, which the
+    // Ridge lane draws over — then the trunk and the Ridge lane on top.
+    this.drawLane(ctx, VALLEY_LANE, '#54683f', '#71835a');
+    this.drawLane(ctx, RIDGE_PATH, '#6b543a', '#8a6d4b');
+    // Lane labels, set into the ground beside each road.
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(242, 234, 216, 0.8)';
+    ctx.fillText('RIDGE', 640, 336);
+    ctx.fillStyle = 'rgba(214, 232, 190, 0.85)';
+    ctx.fillText('VALLEY', 640, 516);
+    // The fork signpost where the two lanes part.
+    this.drawForkSign(ctx);
     // West gate (spawn) and east gate (exit), drawn just inside the canvas
     // so their labels are never clipped by the edge.
     this.drawGate(ctx, 26, RIDGE_PATH[0].y, 'WEST GATE', 1);
     this.drawGate(ctx, 1254, RIDGE_PATH[RIDGE_PATH.length - 1].y, 'EAST GATE', -1);
+  }
+
+  // The fork signpost at the junction: a wooden post with an orange
+  // pennant rising off a junction stone marked Y, and a FORK pill east
+  // of the stone, clear of both lanes — so the split reads even before
+  // any enemy reaches it.
+  drawForkSign(ctx) {
+    const { x, y } = FORK_POINT;
+    ctx.strokeStyle = '#8a6d4b';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 16);
+    ctx.lineTo(x, y - 40);
+    ctx.stroke();
+    ctx.fillStyle = '#ff9d5c';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 40);
+    ctx.lineTo(x - 18, y - 35);
+    ctx.lineTo(x, y - 30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.fillStyle = '#141c24';
+    ctx.fill();
+    ctx.strokeStyle = '#c9a35c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#ffd94d';
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Y', x, y + 5);
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    const label = 'FORK';
+    const lw = ctx.measureText(label).width + 12;
+    ctx.fillStyle = 'rgba(20, 28, 36, 0.9)';
+    ctx.strokeStyle = '#c9a35c';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x + 26, y - 9, lw, 18, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffd94d';
+    ctx.fillText(label, x + 26 + lw / 2, y + 4);
   }
 
   drawGate(ctx, x, y, label, labelSide) {
@@ -625,6 +687,30 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-2.5, -8, 5, 16);
       ctx.fillRect(-8, -2.5, 16, 5);
+    } else if (def.shape === 'scout') {
+      // A Scout Kite: a slim orange diamond, nose-first along its
+      // heading, with a gold pennant streaming behind it — nothing else
+      // on the ridge is this thin, this fast-looking, or orange.
+      ctx.rotate(e.angle);
+      ctx.beginPath();
+      ctx.moveTo(15, 0);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(-13, 0);
+      ctx.lineTo(0, -6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffd94d';
+      ctx.beginPath();
+      ctx.moveTo(-13, 0);
+      ctx.lineTo(-26, -5);
+      ctx.lineTo(-26, 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(5, 0, 2.5, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       // Serpent head.
       ctx.beginPath();

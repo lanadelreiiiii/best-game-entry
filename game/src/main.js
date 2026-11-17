@@ -257,15 +257,23 @@ export class KitewardenGame {
     // player then chooses where to diverge from it, for free.
     s.vanes.syncToWind(s.wind.angle);
     const wave = buildWave(s.wave, s.rng);
+    // Each spawn carries the lane its wave assigned it; the Scout Kite
+    // may re-decide at the fork itself (see combat.js).
     s.spawnQueue = wave.spawns.map((spawn, i) => ({
-      enemy: spawnEnemy(spawn.type, s.wave, s.spawnCounter++),
+      enemy: spawnEnemy(spawn.type, s.wave, s.spawnCounter++, spawn.lane),
       gap: i === 0 ? 0.5 : spawn.delay - wave.spawns[i - 1].delay,
     }));
     s.spawnTimer = 0.5;
     s.waveState = 'spawning';
+    s.forkSplit = wave.fork ? wave.split : null;
     const boss = wave.boss ? ' — the Storm Serpent comes!' : '';
     const vaneTip = s.wave === 1 ? ' Click a wind vane (free) to turn the local wind!' : '';
-    s.banner(`Wave ${s.wave} — wind ${s.wind.label}, strength ${Math.round(s.wind.strength * 100)}%${boss}${vaneTip}`, 3.5);
+    // From wave 3 the banner names the fork split, so the player sees
+    // where the storm is going before the first enemy reaches the fork.
+    const forkTip = wave.fork
+      ? ` — the path forks: Ridge ${wave.split.ridgePct}% / Valley ${100 - wave.split.ridgePct}%`
+      : '';
+    s.banner(`Wave ${s.wave} — wind ${s.wind.label}, strength ${Math.round(s.wind.strength * 100)}%${boss}${forkTip}${vaneTip}`, 3.5);
     this.audio.click();
     return true;
   }

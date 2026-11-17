@@ -9,12 +9,19 @@
 // halfway between the tower and its target — the wind the shot actually
 // flies through. Outside every ring the local wind IS the global wind,
 // so nothing about the old balance changes there.
+//
+// Enemies walk one of two lanes past the fork (see ridge.js). Both lanes
+// are the same length, so `dist` means the same thing on either one and
+// towers still target the enemy furthest along, whichever lane it is on.
+// A Scout Kite re-decides at the fork: it takes the lane with fewer
+// towers in range of it, with a seeded tiebreak.
 
 import { towerStats } from './towers.js';
-import { pointAlongPath, ridgeLength } from './ridge.js';
+import { pointAlongPath, ridgeLength, FORK_DIST, distanceToLane } from './ridge.js';
 import { drawBlessings, waveClearBonus, TOTAL_WAVES, spawnEnemy } from './waves.js';
 
 const PATH_LEN = ridgeLength();
+
 const PROJECTILE_POOL = 240;
 const PARTICLE_POOL = 320;
 
@@ -55,7 +62,9 @@ export class Combat {
     while (s.spawnQueue.length > 0 && s.spawnTimer <= 0) {
       const next = s.spawnQueue[0];
       const enemy = next.enemy;
-      const pos = pointAlongPath(0);
+      // The trunk is shared, so every spawn starts at the same point
+      // whatever lane it will take past the fork.
+      const pos = pointAlongPath(0, enemy.lane);
       enemy.x = pos.x;
       enemy.y = pos.y;
       enemy.angle = pos.angle;
@@ -203,7 +212,7 @@ export class Combat {
     if (p.knockback > 0 && !enemy.def.knockbackImmune && !enemy.dead) {
       const wind = s.wind.vector();
       enemy.dist = Math.max(0, enemy.dist - p.knockback);
-      const pos = pointAlongPath(enemy.dist);
+      const pos = pointAlongPath(enemy.dist, enemy.lane);
       enemy.x = pos.x + wind.x * 4;
       enemy.y = pos.y + wind.y * 4;
     }
@@ -242,16 +251,45 @@ export class Combat {
     }
     if (enemy.def.splitsInto) {
       // A Shearling comes apart into wisps, slightly behind it. The
-      // children are spawned through the same seeded path as any enemy.
+      // children are spawned through the same seeded path as any enemy,
+      // and they stay on the parent's lane — a split never teleports an
+      // enemy across the fork.
       for (let i = 0; i < enemy.def.splitCount; i++) {
-        const child = spawnEnemy(enemy.def.splitsInto, s.wave, s.spawnCounter++);
+        const child = spawnEnemy(enemy.def.splitsInto, s.wave, s.spawnCounter++, enemy.lane);
         child.dist = Math.max(0, enemy.dist - 14 - i * 10);
-        const pos = pointAlongPath(child.dist);
+        child.forked = enemy.forked;
+        const pos = pointAlongPath(child.dist, child.lane);
         child.x = pos.x;
         child.y = pos.y;
         s.enemies.push(child);
       }
     }
+  }
+
+  // How many attacking towers can reach one lane past the fork: a tower
+  // defends a lane when its current range reaches any point of that lane.
+  // Beacons don't shoot, so they never count as defence.
+  towersOnLane(lane) {
+    const s = this.s;
+    let n = 0;
+    for (const tower of s.towers()) {
+      if (tower.def.id === 'beacon') continue;
+      const range = tower.stats.range * (1 + s.mods.range);
+      if (distanceToLane(lane, tower.x, tower.y) <= range) n++;
+    }
+    return n;
+  }
+
+  // The Scout Kite's choice at the fork: the lane with fewer towers in
+  // range. A tie is broken by the run's seeded generator, so the same
+  // seed always sends the same scout down the same lane.
+  chooseScoutLane() {
+    const s = this.s;
+    const ridge = this.towersOnLane('ridge');
+    const valley = this.towersOnLane('valley');
+    if (ridge < valley) return 'ridge';
+    if (valley < ridge) return 'valley';
+    return s.rng() < 0.5 ? 'ridge' : 'valley';
   }
 
   updateEnemies(dt) {
@@ -281,7 +319,15 @@ export class Combat {
       const slowed = s.time < e.slowUntil ? e.slowFactor : 1;
       const speed = e.def.speed * slowed;
       e.dist += speed * dt;
-      const pos = pointAlongPath(e.dist);
+      // The fork: a Scout Kite reaching the fork node re-decides its lane
+      // on the spot, from the towers standing now. Every other enemy keeps
+      // the lane its wave assigned it. Both lanes start at the same point,
+      // so the switch never jumps the scout.
+      if (e.def.id === 'scout' && !e.forked && e.dist >= FORK_DIST) {
+        e.lane = this.chooseScoutLane();
+        e.forked = true;
+      }
+      const pos = pointAlongPath(e.dist, e.lane);
       e.x = pos.x + Math.sin(s.time * 3 + e.wobble) * 2;
       e.y = pos.y + Math.cos(s.time * 2.4 + e.wobble) * 2;
       e.angle = pos.angle;

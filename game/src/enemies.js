@@ -1,7 +1,8 @@
-// KITEWARDEN — the six storm creatures that walk the ridge. Each one is
+// KITEWARDEN — the seven storm creatures that walk the ridge. Each one is
 // a different problem: the Wisp is fast and fragile, the Drifter soaks
 // damage, the Gustling ignores shoves, the Shearling splits in two when it
-// dies, the Mender heals the pack around it — kill it first — and the Storm
+// dies, the Mender heals the pack around it, the Scout Kite is faster than
+// them all and slips down the fork's less-defended lane — and the Storm
 // Serpent, the boss of every fifth wave, is all of them at once, bigger.
 
 export const ENEMIES = {
@@ -74,6 +75,19 @@ export const ENEMIES = {
     shape: 'mender',
     healRate: 6, // hp per second it restores to each nearby ally
     healRadius: 95,
+  },
+  scout: {
+    id: 'scout',
+    name: 'Scout Kite',
+    blurb: 'The fastest thing on the ridge — and clever: at the fork it takes the lane with fewer towers watching it.',
+    hp: 20, // the most fragile creature on the ridge: two Archer shots end it
+    speed: 88, // faster than the Wisp; it outruns the pack to the fork
+    reward: 8,
+    lives: 1,
+    radius: 11,
+    color: '#ff9d5c',
+    dark: '#b85c1e',
+    shape: 'scout',
   },
   serpent: {
     id: 'serpent',
